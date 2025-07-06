@@ -29,7 +29,7 @@ buildindex(
   reference = "Homo_sapiens.GRCh38.dna.toplevel.fa.gz",
   memory = 16000,
   indexSplit = TRUE
-  )
+)
 
 alignCtrl1 = align(index = "ref_human", readfile1 = "Data_RA_raw/SRR4785819_1_subset40k.fastq", readfile2 = "Data_RA_raw/SRR4785819_2_subset40k.fastq", output_file = "Data_RA_raw/aligned/SRR4785819_control.BAM")
 alignCtrl2 = align(index = "ref_human", readfile1 = "Data_RA_raw/SRR4785820_1_subset40k.fastq", readfile2 = "Data_RA_raw/SRR4785820_2_subset40k.fastq", output_file = "Data_RA_raw/aligned/SRR4785820_control.BAM")
@@ -49,11 +49,10 @@ count_matrix = featureCounts(
   isPairedEnd = TRUE,
   GTF.attrType = "gene_id",
   useMetaFeatures = TRUE
-  )
+)
 
 counts = read.table("count_matrix.txt")
 colnames(counts) = c("SRR4785819_control", "SRR4785820_control", "SRR4785828_control", "SRR4785831_control", "SRR4785979_case", "SRR4785980_case", "SRR4785986_case", "SRR4785988_case")
-write.csv(counts, "countsTable.csv")
 
 treatment = c("control", "control", "control", "control", "case", "case", "case", "case")
 treatment_table = data.frame(treatment)
@@ -67,10 +66,7 @@ dds = DESeqDataSetFromMatrix(
 dds = DESeq(dds)
 ddsResults = results(dds, contrast = c("treatment", "case", "control"))
 ddsResults = na.omit(ddsResults)
-write.table(ddsResults, file = "ddsResults.csv", row.names = TRUE, col.names = TRUE)
-
-sum(ddsResults$padj < 0.05 & ddsResults$log2FoldChange > 1, na.rm = TRUE)
-sum(ddsResults$padj < 0.05 & ddsResults$log2FoldChange < -1, na.rm = TRUE)
+write.table(ddsResults, file = "Differentiële genexpressie analyse resulaten.csv", row.names = TRUE, col.names = TRUE, sep= ";")
 
 EnhancedVolcano(
   ddsResults,
@@ -78,17 +74,21 @@ EnhancedVolcano(
   x = "log2FoldChange",
   y = "padj",
   xlim = c(-13,13)
-  )
+)
 
 ddsResultsF = ddsResults[ddsResults$padj < 0.05 & (ddsResults$log2FoldChange < -1 | ddsResults$log2FoldChange > 1),]
 genesToTest = rownames(ddsResultsF)
 GOResBP = enrichGO(genesToTest, OrgDb = "org.Hs.eg.db", keyType = "SYMBOL", ont = "BP")
+write.table(GOResBP@result, file = "GO Enrichment resultaten.csv", row.names = TRUE, col.names = TRUE, sep= ";")
 GOResBPplot = GOResBP@result[order(1:12),]
 
 ggplot(GOResBPplot, aes(-log10(p.adjust), reorder(Description, -log10(p.adjust)))) + geom_col(fill = "cornflowerblue") + labs(x = "-log10 P Waarde", y = "GO-Term", title = "Meeste verrijkte GO-termen met de hooste significantie") + theme_minimal() + guides(fill = "none") + scale_y_discrete(labels = label_wrap(40))
 
-pathview(
-  gene.data = ddsResults,
+ddsResultsF[1] = NULL
+ddsResultsF[2:5] = NULL
+
+pathview = pathview(
+  gene.data = ddsResultsF,
   species = "hsa",
   pathway.id = "hsa05323",
   gene.idtype = "SYMBOL",
